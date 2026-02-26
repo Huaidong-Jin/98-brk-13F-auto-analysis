@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ink-primary: #18181b;
+  --color-ink-secondary: #71717a;
+  --color-ink-tertiary: #a1a1aa;
+  --color-bg-primary: #ffffff;
+  --color-bg-elevated: #f4f4f5;
+  --color-accent: #2563eb;
+  --color-positive: #16a34a;
+  --color-negative: #dc2626;
+  --color-grid: #e4e4e7;
+  --color-chart-1: #3f3f46;
+  --color-chart-2: #52525b;
+  --color-chart-3: #71717a;
+  --color-chart-4: #a1a1aa;
+  --color-chart-5: #d4d4d8;
+  --color-chart-6: #e4e4e7;
+  --color-chart-7: #f4f4f5;
+  --color-chart-8: #fafafa;
+}
+
+.dark {
+  --color-ink-primary: #f4f4f5;
+  --color-ink-secondary: #a1a1aa;
+  --color-ink-tertiary: #71717a;
+  --color-bg-primary: #09090b;
+  --color-bg-elevated: #18181b;
+  --color-accent: #3b82f6;
+  --color-positive: #22c55e;
+  --color-negative: #ef4444;
+  --color-grid: #27272a;
+  --color-chart-1: #fafafa;
+  --color-chart-2: #f4f4f5;
+  --color-chart-3: #e4e4e7;
+  --color-chart-4: #d4d4d8;
+  --color-chart-5: #a1a1aa;
+  --color-chart-6: #71717a;
+  --color-chart-7: #52525b;
+  --color-chart-8: #3f3f46;
+}
+
+body {
+  --font-inter: ui-sans-serif, system-ui, sans-serif;
+  @apply bg-[var(--color-bg-primary)] text-[var(--color-ink-primary)];
+}

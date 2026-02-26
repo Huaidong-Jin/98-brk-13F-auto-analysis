@@ -1,0 +1,18 @@
+# Daily 00:00 UTC: trigger Cloud Run Job to run ingest pipeline.
+# Do NOT run heavy Python ingest inside Actions (15min limit, no persistent DB).
+name: Trigger Ingest
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Cloud Run Job
+        run: |
+          echo "In production, call: gcloud run jobs execute brk13f-ingest --region=..."
+          echo "For MVP without GCP: run ingest manually or via backend scheduler."
+          # gcloud run jobs execute brk13f-ingest --region=us-central1 --project=YOUR_PROJECT

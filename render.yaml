@@ -1,0 +1,13 @@
+# Render.com 部署后端 API
+# 在 Render Dashboard 可改用此文件一键创建 Web Service
+services:
+  - type: web
+    name: brk13f-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URL
+        generateValue: true
+      - key: SEC_USER_AGENT
+        value: "Jimmy jimmyandone@gmail.com"

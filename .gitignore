@@ -1,0 +1,36 @@
+# Env and secrets
+.env
+.env.local
+*.pem
+**/service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Backend data
+backend/data/
+*.db
+
+# Node
+node_modules/
+.next/
+out/
+.pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Build
+dist/
+build/
