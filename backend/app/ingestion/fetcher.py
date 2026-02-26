@@ -15,6 +15,8 @@ import httpx
 
 BRK_CIK = "0001067983"
 BASE_URL = "https://data.sec.gov"
+# Filing files (index.json, infotable XML) live on www.sec.gov, not data.sec.gov
+ARCHIVES_BASE = "https://www.sec.gov"
 SUBMISSIONS_URL = f"{BASE_URL}/submissions/CIK{BRK_CIK}.json"
 RATE_LIMIT_DELAY = 0.11  # ~9 req/s to stay under 10
 
@@ -22,8 +24,11 @@ RATE_LIMIT_DELAY = 0.11  # ~9 req/s to stay under 10
 DEFAULT_USER_AGENT = "Jimmy jimmyandone@gmail.com"
 
 
-def _sec_headers() -> dict[str, str]:
-    return {"User-Agent": os.environ.get("SEC_USER_AGENT", DEFAULT_USER_AGENT)}
+def _sec_headers(accept_json: bool = False) -> dict[str, str]:
+    h = {"User-Agent": os.environ.get("SEC_USER_AGENT", DEFAULT_USER_AGENT)}
+    if accept_json:
+        h["Accept"] = "application/json"
+    return h
 
 
 def _normalize_accession(acc: str) -> str:
@@ -109,27 +114,38 @@ async def fetch_filings(
     return result
 
 
+def _ensure_dict(data: dict[str, Any] | bytes, url: str) -> dict[str, Any]:
+    """If SEC returns bytes (e.g. content-type not set), parse as JSON."""
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, bytes):
+        import json
+        try:
+            return json.loads(data.decode("utf-8", errors="replace"))
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Expected JSON from {url}, got bytes (first 200 chars): {data[:200]!r}"
+            ) from e
+    raise ValueError(f"Expected dict or bytes from {url}, got {type(data)}")
+
+
 async def fetch_filing_index(
     accession_number: str, cik: str = BRK_CIK
 ) -> dict[str, Any]:
     """Fetch index.json for a filing. accession_number may include or omit dashes."""
     acc_clean = _normalize_accession(accession_number)
-    # SEC path: Archives/edgar/data/{cik_no_dash}/{acc_with_dashes}/index.json
+    # SEC path: Archives/edgar/data/{cik_no_leading_zeros}/{acc_NO_dashes}/index.json
     cik_stripped = cik.lstrip("0") or "0"
-    acc_dashed = (
-        "-".join([acc_clean[:10], acc_clean[10:12], acc_clean[12:]])
-        if len(acc_clean) >= 18
-        else acc_clean
-    )
-    url = f"{BASE_URL}/Archives/edgar/data/{cik_stripped}/{acc_dashed}/index.json"
-    async with httpx.AsyncClient(timeout=30.0, headers=_sec_headers()) as client:
+    url = f"{ARCHIVES_BASE}/Archives/edgar/data/{cik_stripped}/{acc_clean}/index.json"
+    async with httpx.AsyncClient(
+        timeout=30.0, headers=_sec_headers(accept_json=True)
+    ) as client:
         data = await _request_with_retry(client, url)
-        assert isinstance(data, dict)
-    return data
+    return _ensure_dict(data, url)
 
 
 def _find_infotable_file(index: dict[str, Any]) -> str | None:
-    """From index.json directory listing, find the infotable XML file name."""
+    """From index.json directory listing, find the 13F infotable XML file name."""
     directory = index.get("directory", {})
     if isinstance(directory, dict):
         items = directory.get("item", [])
@@ -137,11 +153,23 @@ def _find_infotable_file(index: dict[str, Any]) -> str | None:
         items = directory if isinstance(directory, list) else []
     if not isinstance(items, list):
         items = [items]
+    xml_candidates: list[str] = []
     for item in items:
         name = item.get("name", "") if isinstance(item, dict) else ""
-        if name and "infotable" in name.lower() and name.endswith(".xml"):
+        if not name or not name.endswith(".xml"):
+            continue
+        if "infotable" in name.lower() or "informationtable" in name.lower():
             return name
-    return None
+        if "index" in name.lower():
+            continue
+        xml_candidates.append(name)
+    # Fallback: 13F infotable is often a numbered .xml (e.g. 50240.xml), not primary_doc
+    for c in xml_candidates:
+        if c != "primary_doc.xml" and c[0].isdigit():
+            return c
+    if "primary_doc.xml" in xml_candidates:
+        return "primary_doc.xml"
+    return xml_candidates[0] if xml_candidates else None
 
 
 async def download_infotable(
@@ -157,12 +185,7 @@ async def download_infotable(
         raise FileNotFoundError(f"No infotable XML in index for {accession_number}")
     acc_clean = _normalize_accession(accession_number)
     cik_stripped = cik.lstrip("0") or "0"
-    acc_dashed = (
-        "-".join([acc_clean[:10], acc_clean[10:12], acc_clean[12:]])
-        if len(acc_clean) >= 18
-        else acc_clean
-    )
-    url = f"{BASE_URL}/Archives/edgar/data/{cik_stripped}/{acc_dashed}/{name}"
+    url = f"{ARCHIVES_BASE}/Archives/edgar/data/{cik_stripped}/{acc_clean}/{name}"
     async with client or httpx.AsyncClient(
         timeout=60.0, headers=_sec_headers()
     ) as c:

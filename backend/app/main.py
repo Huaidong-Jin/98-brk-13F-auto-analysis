@@ -2,12 +2,14 @@
 
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic_settings import BaseSettings
 
-from app.db import get_engine, get_session_maker, init_db
 from app.api.routes import router as api_router
+from app.db import get_engine, get_session_maker, init_db
+from app.scheduler import register_scheduler
 
 
 class Settings(BaseSettings):
@@ -20,13 +22,17 @@ class Settings(BaseSettings):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Create engine and session maker; run migrations on startup."""
+    """Create engine and session maker; run migrations on startup; start scheduler."""
     settings = Settings()
     engine = get_engine(settings.database_url)
     app.state.engine = engine
     app.state.session_maker = get_session_maker(engine)
     await init_db(engine)
+    scheduler = AsyncIOScheduler()
+    register_scheduler(scheduler)
+    scheduler.start()
     yield
+    scheduler.shutdown(wait=False)
     await engine.dispose()
 
 

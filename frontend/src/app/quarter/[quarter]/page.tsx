@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { fetchQuarterDetail, formatUSD, formatPct } from "@/lib/api";
+import { useLocale } from "@/i18n/context";
 
 export default function QuarterDetailPage() {
+  const { t } = useLocale();
   const params = useParams();
   const quarter = params.quarter as string;
   const [data, setData] = useState<{
@@ -25,8 +27,8 @@ export default function QuarterDetailPage() {
       .finally(() => setLoading(false));
   }, [quarter]);
 
-  if (loading) return <p className="text-body text-ink-secondary">Loading...</p>;
-  if (error) return <p className="text-body text-negative">Error: {error}</p>;
+  if (loading) return <p className="text-body text-ink-secondary">{t("home.loading")}</p>;
+  if (error) return <p className="text-body text-negative">{t("home.error", { message: error })}</p>;
   if (!data) return null;
 
   const { meta, top_holdings, changes } = data;
@@ -41,14 +43,14 @@ export default function QuarterDetailPage() {
           {meta.validation_status}
         </span>
         <a href={secLink} target="_blank" rel="noopener noreferrer" className="text-caption text-accent hover:underline">
-          SEC source
+          {t("quarter.secSource")}
         </a>
       </div>
 
       <ChartFrame
-        conclusionTitle={`Top ${top_holdings.length} holdings by value`}
-        howToRead="Bar length = position value. Label shows % of portfolio and $ amount."
-        footnote={`Unit multiplier: ${meta.unit_multiplier}. Data from SEC 13F.`}
+        conclusionTitle={t("quarter.topHoldingsTitle", { n: String(top_holdings.length) })}
+        howToRead={t("quarter.topHoldingsHowToRead")}
+        footnote={t("quarter.footnoteUnit", { mult: String(meta.unit_multiplier) })}
       >
         <ul className="space-y-2">
           {top_holdings.map((h) => (
@@ -66,29 +68,29 @@ export default function QuarterDetailPage() {
       </ChartFrame>
 
       <section>
-        <h2 className="text-title text-ink-primary mb-4">Changes vs previous quarter</h2>
+        <h2 className="text-title text-ink-primary mb-4">{t("quarter.changesVsPrev")}</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-label text-ink-tertiary">New</p>
+            <p className="text-label text-ink-tertiary">{t("quarter.changesNew")}</p>
             <p className="text-title text-positive">{(changes.new as unknown[]).length}</p>
           </div>
           <div className="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-label text-ink-tertiary">Increased</p>
+            <p className="text-label text-ink-tertiary">{t("quarter.changesIncreased")}</p>
             <p className="text-title text-ink-primary">{(changes.increased as unknown[]).length}</p>
           </div>
           <div className="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-label text-ink-tertiary">Decreased</p>
+            <p className="text-label text-ink-tertiary">{t("quarter.changesDecreased")}</p>
             <p className="text-title text-ink-primary">{(changes.decreased as unknown[]).length}</p>
           </div>
           <div className="rounded border border-zinc-200 p-4 dark:border-zinc-800">
-            <p className="text-label text-ink-tertiary">Closed</p>
+            <p className="text-label text-ink-tertiary">{t("quarter.changesClosed")}</p>
             <p className="text-title text-negative">{(changes.closed as unknown[]).length}</p>
           </div>
         </div>
       </section>
 
       <p className="text-caption text-ink-tertiary">
-        <a href={`/api/v1/download/agg_csv?quarter=${quarter}`} className="text-accent hover:underline">Download this quarter (CSV)</a>
+        <a href={`/api/v1/download/agg_csv?quarter=${quarter}`} className="text-accent hover:underline">{t("quarter.downloadCsv")}</a>
       </p>
     </main>
   );

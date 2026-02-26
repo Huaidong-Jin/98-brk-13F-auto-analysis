@@ -35,10 +35,25 @@ def build_agg_for_quarter(
                 "change_type",
             ]
         )
-    df = clean_df.sort_values("value_usd", ascending=False).reset_index(drop=True)
+    # One row per cusip: aggregate put/call and multiple entries per issuer
+    agg_spec: dict[str, tuple[str, str]] = {
+        "value_usd": ("value_usd", "sum"),
+        "weight_pct": ("weight_pct", "sum"),
+        "issuer_name": ("issuer_name", "first"),
+    }
+    if "ticker" in clean_df.columns:
+        agg_spec["ticker"] = ("ticker", "first")
+    if "sshprnamt" in clean_df.columns:
+        agg_spec["sshprnamt"] = ("sshprnamt", "sum")
+    agg = clean_df.groupby("cusip", as_index=False).agg(**agg_spec)
+    if "ticker" not in agg.columns:
+        agg["ticker"] = None
+    if "sshprnamt" not in agg.columns:
+        agg["sshprnamt"] = 0
+    df = agg.sort_values("value_usd", ascending=False).reset_index(drop=True)
     df["rank"] = range(1, len(df) + 1)
     df["quarter"] = quarter
-    df["shares"] = df["sshprnamt"] if "sshprnamt" in df.columns else 0
+    df["shares"] = df["sshprnamt"]
     df["ticker"] = df["ticker"] if "ticker" in df.columns else None
     prev_value = (
         prev_agg.set_index("cusip")["value_usd"].to_dict()

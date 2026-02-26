@@ -3,9 +3,12 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChartFrame } from "@/components/charts/ChartFrame";
+import { UnifiedTooltip } from "@/components/charts/UnifiedTooltip";
 import { fetchHolding, formatUSD, formatPct } from "@/lib/api";
+import { useLocale } from "@/i18n/context";
 
 export default function HoldingDetailPage() {
+  const { t } = useLocale();
   const params = useParams();
   const id = params.id as string;
   const [data, setData] = useState<{
@@ -26,13 +29,27 @@ export default function HoldingDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <p className="text-body text-ink-secondary">Loading...</p>;
-  if (error) return <p className="text-body text-negative">Error: {error}</p>;
+  if (loading) return <p className="text-body text-ink-secondary">{t("home.loading")}</p>;
+  if (error) return <p className="text-body text-negative">{t("home.error", { message: error })}</p>;
   if (!data) return null;
 
   const ts = data.time_series;
   const values = mode === "pct" ? ts.map((d) => d.weight_pct) : ts.map((d) => d.value_usd / 1e9);
   const maxVal = Math.max(...values, 1);
+  const chartHeightPx = 256;
+
+  const conclusionTitle = ts.length
+    ? mode === "pct"
+      ? t("holding.weightOverTime", { name: data.issuer_name })
+      : t("holding.valueOverTime", { name: data.issuer_name })
+    : t("holding.noHistory");
+  const howToRead = mode === "pct" ? t("holding.howToReadPct") : t("holding.howToReadUsd");
+  const footnote = ts.length
+    ? t("holding.latestPctUsd", {
+        pct: formatPct(ts[ts.length - 1].weight_pct),
+        usd: formatUSD(ts[ts.length - 1].value_usd),
+      })
+    : undefined;
 
   return (
     <main className="space-y-8">
@@ -43,11 +60,7 @@ export default function HoldingDetailPage() {
         <span>{data.cusip}</span>
       </p>
 
-      <ChartFrame
-        conclusionTitle={ts.length ? `${data.issuer_name} ${mode === "pct" ? "weight in portfolio" : "position value"} over time` : "No history yet"}
-        howToRead={mode === "pct" ? "Line shows % of total portfolio. Switch to $ for dollar value." : "Line shows position value in $B. Switch to % for weight."}
-        footnote={ts.length ? `Latest: ${formatPct(ts[ts.length - 1].weight_pct)} weight, ${formatUSD(ts[ts.length - 1].value_usd)}.` : undefined}
-      >
+      <ChartFrame conclusionTitle={conclusionTitle} howToRead={howToRead} footnote={footnote}>
         <div className="mb-2">
           <button
             type="button"
@@ -66,15 +79,23 @@ export default function HoldingDetailPage() {
         </div>
         {ts.length > 0 ? (
           <>
-            <div className="flex items-end gap-0.5 h-64">
-              {values.map((v, i) => (
-                <div
-                  key={ts[i].quarter}
-                  className="flex-1 min-w-0 bg-accent rounded-t opacity-90 hover:opacity-100"
-                  style={{ height: `${Math.max(2, (v / maxVal) * 100)}%` }}
-                  title={`${ts[i].quarter}: ${mode === "pct" ? formatPct(v) : `$${v.toFixed(2)}B`}`}
-                />
-              ))}
+            <div className="flex items-end gap-px min-w-0" style={{ height: chartHeightPx }}>
+              {values.map((v, i) => {
+                const barHeightPx = Math.max(2, (v / maxVal) * chartHeightPx);
+                return (
+                  <UnifiedTooltip
+                    key={ts[i].quarter}
+                    quarter={ts[i].quarter}
+                    value={mode === "pct" ? formatPct(v) : `$${v.toFixed(2)}B`}
+                    className="relative flex-1 min-w-0 shrink-0 flex items-end"
+                  >
+                    <div
+                      className="w-full bg-accent rounded-t opacity-90 hover:opacity-100"
+                      style={{ height: barHeightPx }}
+                    />
+                  </UnifiedTooltip>
+                );
+              })}
             </div>
             <div className="flex justify-between text-caption text-ink-tertiary mt-1">
               <span>{ts[0].quarter}</span>
@@ -82,12 +103,12 @@ export default function HoldingDetailPage() {
             </div>
           </>
         ) : (
-          <div className="h-64 flex items-center justify-center text-ink-tertiary text-body">No time series data</div>
+          <div className="h-64 flex items-center justify-center text-ink-tertiary text-body">{t("holding.noTimeSeries")}</div>
         )}
       </ChartFrame>
 
       <p className="text-caption text-ink-tertiary">
-        <a href={`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/download/agg_csv?quarter=latest`} className="text-accent hover:underline">Download time series (CSV)</a>
+        <a href={`${process.env.NEXT_PUBLIC_API_URL || ""}/api/v1/download/agg_csv?quarter=latest`} className="text-accent hover:underline">{t("holding.downloadCsv")}</a>
       </p>
     </main>
   );

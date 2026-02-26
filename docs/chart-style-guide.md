@@ -15,6 +15,13 @@ All charts must follow this spec. Enforced via ChartFrame and CURSOR_RULES.
 - **Grid**: Subtle (`color-grid`), no heavy borders.
 - **Legend**: If multiple series, place legend top-right or below; same token set.
 
+### Color semantics
+
+- **Primary storyline**: use `accent` for the single most important series in a chart (e.g. total portfolio value, Top1 weight).
+- **Positive vs negative**: use `positive` for新增/增持/盈利方向, and `negative` for 减持/清仓/回撤 等需要提醒的内容。
+- **Ranked slices / groups**: for multiple series in the same group (Top5 holdings, sector breakdown), use `chart-1`…`chart-4/5` as a neutral sequence; avoid mixing `positive`/`negative` into purely categorical comparisons.
+- **Grid and helpers**: use `color-grid` for axes/grid lines; text colors follow `ink-primary` / `ink-secondary` / `ink-tertiary` for title, body, caption.
+
 ## Tooltip
 
 - Show value + unit ($B/$M, %) and quarter/label.

@@ -1,18 +1,64 @@
-# Daily 00:00 UTC: trigger Cloud Run Job to run ingest pipeline.
-# Do NOT run heavy Python ingest inside Actions (15min limit, no persistent DB).
+# Quarterly 13F auto-ingest workflow.
+#
+# Triggers:
+#   - Schedule: daily at 06:10 UTC during filing-window months (Feb/May/Aug/Nov)
+#               and every Monday at 06:10 UTC year-round as a safety net.
+#   - Manual: workflow_dispatch (with optional force flag).
+#
+# The workflow calls POST /api/v1/ingest/trigger on the deployed backend.
+# Requires GitHub secrets:
+#   API_BASE_URL   — e.g. https://brk13f-api.onrender.com
+#   INGEST_API_KEY — bearer token matching backend INGEST_API_KEY env var
 name: Trigger Ingest
 
 on:
   schedule:
-    - cron: "0 0 * * *"
+    # Daily 06:10 UTC — APScheduler already skips non-filing-window months,
+    # but we also run GHA daily so manual deployments stay in sync.
+    - cron: "10 6 * * *"
+    # Weekly Monday safety net (catches years where cron above is paused by GitHub)
+    - cron: "10 6 * * 1"
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Re-process already-ingested quarters (true/false)"
+        required: false
+        default: "false"
+      recent_only:
+        description: "Only fetch last 6 months (true/false)"
+        required: false
+        default: "true"
 
 jobs:
   trigger-ingest:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Trigger Cloud Run Job
+      - name: Trigger ingest via API
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
+          FORCE: ${{ github.event.inputs.force || 'false' }}
+          RECENT_ONLY: ${{ github.event.inputs.recent_only || 'true' }}
         run: |
-          echo "In production, call: gcloud run jobs execute brk13f-ingest --region=..."
-          echo "For MVP without GCP: run ingest manually or via backend scheduler."
-          # gcloud run jobs execute brk13f-ingest --region=us-central1 --project=YOUR_PROJECT
+          if [ -z "$API_BASE_URL" ]; then
+            echo "::warning::API_BASE_URL secret not set — skipping remote trigger."
+            echo "To enable, add API_BASE_URL and INGEST_API_KEY to repository secrets."
+            exit 0
+          fi
+          echo "Triggering ingest: force=$FORCE recent_only=$RECENT_ONLY"
+          RESPONSE=$(curl -sf -X POST \
+            "${API_BASE_URL}/api/v1/ingest/trigger?force=${FORCE}&recent_only=${RECENT_ONLY}" \
+            -H "Authorization: Bearer ${INGEST_API_KEY}" \
+            -H "Accept: application/json" \
+            --max-time 300)
+          echo "Response: $RESPONSE"
+          # Fail the job if the response contains failed quarters
+          FAILED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('failed', [])))" 2>/dev/null || echo "0")
+          if [ "$FAILED" -gt "0" ]; then
+            echo "::error::Ingest reported $FAILED failures"
+            exit 1
+          fi
+          SUCCESS=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(', '.join(d.get('success', [])))" 2>/dev/null || echo "")
+          SKIPPED=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('skipped', [])))" 2>/dev/null || echo "0")
+          echo "::notice::Ingest complete. Processed: [${SUCCESS}]. Skipped: ${SKIPPED} quarters."

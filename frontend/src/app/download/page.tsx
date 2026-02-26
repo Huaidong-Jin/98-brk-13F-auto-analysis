@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { fetchArtifacts } from "@/lib/api";
+import { useLocale } from "@/i18n/context";
 
 export default function DownloadPage() {
+  const { t } = useLocale();
   const [artifacts, setArtifacts] = useState<{ artifact_type: string; quarter: string; generated_at: string | null; validation_status: string; download_url: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,24 +17,24 @@ export default function DownloadPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p className="text-body text-ink-secondary">Loading...</p>;
-  if (error) return <p className="text-body text-negative">Error: {error}</p>;
+  if (loading) return <p className="text-body text-ink-secondary">{t("home.loading")}</p>;
+  if (error) return <p className="text-body text-negative">{t("home.error", { message: error })}</p>;
 
   return (
     <main className="space-y-8">
-      <h1 className="text-display text-ink-primary">Download center</h1>
+      <h1 className="text-display text-ink-primary">{t("download.title")}</h1>
       <p className="text-body text-ink-secondary">
-        All artifacts: raw CSV, cleaned CSV, agg CSV, meta JSON. Each row shows quarter, generation time, and validation status.
+        {t("download.intro")}
       </p>
       <div className="overflow-x-auto">
         <table className="w-full text-body text-left">
           <thead>
             <tr className="border-b border-zinc-200 dark:border-zinc-800">
-              <th className="py-2 pr-4 text-label text-ink-tertiary">Type</th>
-              <th className="py-2 pr-4 text-label text-ink-tertiary">Quarter</th>
-              <th className="py-2 pr-4 text-label text-ink-tertiary">Generated</th>
-              <th className="py-2 pr-4 text-label text-ink-tertiary">Status</th>
-              <th className="py-2 text-label text-ink-tertiary">Download</th>
+              <th className="py-2 pr-4 text-label text-ink-tertiary">{t("download.type")}</th>
+              <th className="py-2 pr-4 text-label text-ink-tertiary">{t("download.quarter")}</th>
+              <th className="py-2 pr-4 text-label text-ink-tertiary">{t("download.generated")}</th>
+              <th className="py-2 pr-4 text-label text-ink-tertiary">{t("download.status")}</th>
+              <th className="py-2 text-label text-ink-tertiary">{t("download.download")}</th>
             </tr>
           </thead>
           <tbody>
@@ -48,7 +50,7 @@ export default function DownloadPage() {
                 </td>
                 <td className="py-2">
                   <a href={a.download_url} className="text-caption text-accent hover:underline" target="_blank" rel="noopener noreferrer">
-                    Download
+                    {t("download.download")}
                   </a>
                 </td>
               </tr>
@@ -57,7 +59,7 @@ export default function DownloadPage() {
         </table>
       </div>
       {artifacts.length === 0 && (
-        <p className="text-body text-ink-tertiary">No artifacts yet. Run the backend ingest pipeline to generate files.</p>
+        <p className="text-body text-ink-tertiary">{t("download.noArtifacts")}</p>
       )}
     </main>
   );

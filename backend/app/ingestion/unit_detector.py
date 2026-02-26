@@ -23,10 +23,16 @@ def detect_unit_multiplier_per_quarter(
     total_raw = df_q["value_raw"].sum()
     if total_raw <= 0:
         return 1000, "default_thousands_no_data"
-    # implied price = value / shares; avoid div by zero
+    # If total_raw is already in [50B, 800B], filer reported in dollars (not thousands)
+    if portfolio_range[0] <= total_raw <= portfolio_range[1]:
+        return 1, "dollars_total_already_in_range"
+    # Implied price = value / shares; avoid div by zero
     shares = df_q["sshprnamt"].replace(0, np.nan)
     valid = shares.notna() & (shares > 0)
     if not valid.any():
+        # Cannot use implied price; if total as thousands is in range, use 1000
+        if portfolio_range[0] <= (total_raw * 1000) <= portfolio_range[1]:
+            return 1000, "default_thousands_no_shares"
         return 1000, "default_thousands_no_shares"
     pass_1000_total = portfolio_range[0] <= (total_raw * 1000) <= portfolio_range[1]
     pass_1_total = portfolio_range[0] <= (total_raw * 1) <= portfolio_range[1]
