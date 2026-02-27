@@ -37,9 +37,10 @@ jobs:
 
       - name: Build static site
         env:
-          # For now, leave API URL empty — the frontend will use whatever
-          # default it has configured for public deployments.
-          NEXT_PUBLIC_API_URL: ""
+          # Public API base URL for the 13F backend.
+          # Configure this in GitHub → Repo → Settings → Variables → Actions
+          # as `NEXT_PUBLIC_API_URL`, e.g. https://brk13f-api.example.com
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
         run: npm run build
 
       - name: Upload Pages artifact

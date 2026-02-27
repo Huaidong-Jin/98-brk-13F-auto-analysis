@@ -24,13 +24,22 @@ All charts must follow this spec. Enforced via ChartFrame and CURSOR_RULES.
 
 ## Tooltip
 
-- Show value + unit ($B/$M, %) and quarter/label.
-- Use shared component where possible (UnifiedTooltip pattern).
+- Tooltip payload（统一顺序）：
+  1. Quarter
+  2. Value ($) — 使用 `formatUSD`
+  3. Weight (%) — 使用 `formatPct`
+  4. ΔQoQ ($)
+  5. ΔQoQ (%)
+- 所有图表通过 `components/viz/UnifiedTooltip.tsx` 生成 tooltip 文本，内部封装上述顺序。
 
 ## Annotation
 
 - Mark turning points or "largest change" with short text (e.g. "Q3 2024: Apple reduced").
 - Prefer text callouts over only color change.
+
+Annotations should be computed in reusable helpers (see
+`components/viz/annotations.ts`) so that peak/trough/latest markers are
+consistent across charts.
 
 ## Export
 

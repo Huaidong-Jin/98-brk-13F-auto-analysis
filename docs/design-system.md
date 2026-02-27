@@ -40,3 +40,10 @@ Tailwind: use semantic names via `tailwind.config.ts` theme extension; do not us
 - One accent color only; rest neutral (zinc).
 - Every chart: conclusion title + "How to read" sentence + footnote/annotation.
 - See `docs/chart-style-guide.md` for full chart spec.
+
+## Implementation notes
+
+- Charts are implemented as **SVG + D3 utilities** (no canvas/ECharts).
+- All fills/strokes must use Tailwind semantic tokens (`text-ink-*`, `fill-chart-*`,
+  `stroke-accent`, etc.); hardcoded hex values like `#FF0000` are forbidden and
+  enforced by `frontend/scripts/lint-charts.js`.
